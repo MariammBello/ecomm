@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/mariammbello/ecomm/backend:sha-87679c7725fac30ddf13d0bbee7f585925846cd5 # Latest: ghcr.io/mariammbello/ecomm/backend:latest
+        image: ghcr.io/mariammbello/ecomm/backend:sha-9415d4d2923425af355daebaf7f1ad9d52c36d8b # Latest: ghcr.io/mariammbello/ecomm/backend:latest
         ports:
         - containerPort: 5000
         env:
