@@ -1,0 +1,79 @@
+grafana:
+  adminPassword: admin123  # Change this in production
+  service:
+    type: NodePort
+    nodePort: 30900
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'ecomm'
+          orgId: 1
+          folder: 'E-commerce'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/ecomm
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30901
+  prometheusSpec:
+    retention: 15d
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1
+        memory: 2Gi
+    additionalScrapeConfigs:
+      - job_name: 'ecomm-backend'
+        static_configs:
+          - targets: ['backend:80']
+      - job_name: 'ecomm-frontend'
+        static_configs:
+          - targets: ['frontend:80']
+
+alertmanager:
+  service:
+    type: NodePort
+    nodePort: 30902
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+# Custom alert rules
+additionalPrometheusRulesMap:
+  ecomm-rules:
+    groups:
+      - name: ecomm-alerts
+        rules:
+          - alert: HighCPUUsage
+            expr: container_cpu_usage_seconds_total{namespace="default"} > 0.8
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              description: "Container {{ $labels.container }} CPU usage above 80%"
+          - alert: HighMemoryUsage
+            expr: container_memory_usage_bytes > 0.85 * container_spec_memory_limit_bytes
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              description: "Container {{ $labels.container }} memory usage above 85%"
+          - alert: HighLatency
+            expr: http_request_duration_seconds{quantile="0.9"} > 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              description: "90th percentile latency is above 1s"
