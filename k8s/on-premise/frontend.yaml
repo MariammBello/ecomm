@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/mariammbello/ecomm/frontend:latest
+        image: ghcr.io/mariammbello/ecomm/frontend:sha-280ff8b296c47913a51fc747d4052506315059e9 # Latest: ghcr.io/mariammbello/ecomm/frontend:latest
         ports:
         - containerPort: 80
 ---
