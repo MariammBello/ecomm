@@ -10,6 +10,9 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE_NAME: backend
   FRONTEND_IMAGE_NAME: frontend
+  # Using lowercase as per Docker best practices
+  REPO_OWNER: mariammbello
+  REPO_NAME: ecomm
 
 jobs:
   build-and-push:
@@ -31,20 +34,43 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata for Docker
-      id: meta
+    - name: Extract Backend metadata
+      id: meta-backend
       uses: docker/metadata-action@v4
       with:
-        images: |
-          ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.BACKEND_IMAGE_NAME }}
-          ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.FRONTEND_IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/${{ env.BACKEND_IMAGE_NAME }}
+        tags: |
+          type=sha,format=long
+          type=ref,event=branch
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=Backend Service
+          org.opencontainers.image.description=Flask backend for e-commerce application
+          org.opencontainers.image.version={{version}}
+          org.opencontainers.image.created={{date 'YYYY-MM-DD'}}
+
+    - name: Extract Frontend metadata
+      id: meta-frontend
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/${{ env.FRONTEND_IMAGE_NAME }}
+        tags: |
+          type=sha,format=long
+          type=ref,event=branch
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=Frontend Service
+          org.opencontainers.image.description=Static frontend for e-commerce application
+          org.opencontainers.image.version={{version}}
+          org.opencontainers.image.created={{date 'YYYY-MM-DD'}}
 
     - name: Build and push Backend
       uses: docker/build-push-action@v4
       with:
         context: ./backend
         push: true
-        tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+        tags: ${{ steps.meta-backend.outputs.tags }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -53,15 +79,19 @@ jobs:
       with:
         context: ./frontend
         push: true
-        tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+        tags: ${{ steps.meta-frontend.outputs.tags }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
     - name: Update Kubernetes manifests
       run: |
         cd k8s/on-premise
-        sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}|" backend.yaml
-        sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}|" frontend.yaml
+        # Using the SHA tag for deterministic deployments
+        BACKEND_SHA_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | grep "sha-" | head -n 1)
+        FRONTEND_SHA_TAG=$(echo "${{ steps.meta-frontend.outputs.tags }}" | grep "sha-" | head -n 1)
+        sed -i "s|image: .*backend.*|image: ${BACKEND_SHA_TAG}|" backend.yaml
+        sed -i "s|image: .*frontend.*|image: ${FRONTEND_SHA_TAG}|" frontend.yaml
 
     - name: Commit and push changes
       run: |

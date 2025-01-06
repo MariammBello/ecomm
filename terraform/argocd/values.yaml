@@ -12,6 +12,12 @@ server:
     repositories: |
       - url: https://github.com/MariammBello/ecomm.git
         name: ecomm
+        type: git
+
+    credential.templates: |
+      - url: ghcr.io
+        username: MariammBello
+        password: ${GITHUB_TOKEN}
 
   additionalApplications:
     - name: ecomm
@@ -28,3 +34,8 @@ server:
         automated:
           prune: true
           selfHeal: true
+
+configs:
+  secret:
+    createSecret: true
+    githubToken: ${GITHUB_TOKEN}
