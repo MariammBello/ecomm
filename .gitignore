@@ -90,6 +90,7 @@ k8s/secrets/
 .terraformrc
 terraform.rc
 crash.log
+terraform/argocd/
 
 # Ansible
 *.retry
